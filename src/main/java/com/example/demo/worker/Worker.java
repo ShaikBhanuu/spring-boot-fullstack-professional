@@ -1,5 +1,6 @@
 package com.example.demo.worker;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -17,6 +18,7 @@ import java.math.BigDecimal;
         @Index(name = "idx_worker_phone", columnList = "phone"),
         @Index(name = "idx_worker_active", columnList = "active")
 })
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class Worker {
 
     @Id

@@ -1,5 +1,6 @@
 package com.example.demo.site;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.*;
 import javax.persistence.*;
 
@@ -11,6 +12,7 @@ import javax.persistence.*;
 @Table(name = "sites", indexes = {
         @Index(name = "idx_site_active", columnList = "active")
 })
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class Site {
 
     @Id
