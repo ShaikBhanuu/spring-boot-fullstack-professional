@@ -4,9 +4,6 @@ import lombok.AllArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.YearMonth;
-import java.util.Map;
-
 @RestController
 @RequestMapping("/api/overtime")
 @AllArgsConstructor
@@ -19,11 +16,8 @@ public class OvertimeController {
             @PathVariable Long workerId,
             @RequestParam String month) {
 
-        // Parse the YYYY-MM string to extract year and month safely
-        YearMonth yearMonth = YearMonth.parse(month);
-
-        // Assuming your service takes workerId, year, and month as arguments
-        return ResponseEntity.ok(overtimeService.getOvertimeSummary(workerId, yearMonth.getYear(), yearMonth.getMonthValue()));
+        // Let the service handle parsing and processing the String month
+        return ResponseEntity.ok(overtimeService.getOvertimeSummary(workerId, month));
     }
 
     @PostMapping("/settle/{workerId}")
@@ -31,10 +25,7 @@ public class OvertimeController {
             @PathVariable Long workerId,
             @RequestParam String month) {
 
-        YearMonth yearMonth = YearMonth.parse(month);
-
-        overtimeService.settleOvertime(workerId, yearMonth.getYear(), yearMonth.getMonthValue());
-
-        return ResponseEntity.ok(Map.of("message", "Overtime settled successfully. SMS notification event triggered."));
+        // Pass the raw parameters straight through to match your service's signature
+        return ResponseEntity.ok(overtimeService.settleOvertime(workerId, month));
     }
 }
