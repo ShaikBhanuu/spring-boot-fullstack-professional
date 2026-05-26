@@ -1,0 +1,277 @@
+{
+  "info": {
+    "_postman_id": "39d8f35d-edc6-404d-a4be-86720131ad09",
+    "name": "DeepThought-HRMS",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "54234646",
+    "_collection_link": "https://go.postman.co/collection/54234646-39d8f35d-edc6-404d-a4be-86720131ad09?source=collection_link"
+  },
+  "item": [
+    {
+      "name": "Create Worker",
+      "request": {
+        "auth": {
+          "type": "noauth"
+        },
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n  \"name\": \"Raju Kumar\",\r\n  \"phone\": \"9876543210\",\r\n  \"designation\": \"MASON\",\r\n  \"dailyWageRate\": 800,\r\n  \"active\": true\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://localhost:8080/api/v1/workers",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8080",
+          "path": [
+            "api",
+            "v1",
+            "workers"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Create Site",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n  \"siteName\": \"Greenfield Phase 2\",\r\n  \"location\": \"Bangalore North\",\r\n  \"active\": true\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://localhost:8080/api/v1/sites",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8080",
+          "path": [
+            "api",
+            "v1",
+            "sites"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Clock In",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n  \"workerId\": 1,\r\n  \"siteId\": 1\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://localhost:8080/api/attendance/clock-in",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8080",
+          "path": [
+            "api",
+            "attendance",
+            "clock-in"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Get Attendance Log",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8080/api/attendance/log?workerId=1&from=2026-05-01T00:00:00&to=2026-05-31T23:59:59",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8080",
+          "path": [
+            "api",
+            "attendance",
+            "log"
+          ],
+          "query": [
+            {
+              "key": "workerId",
+              "value": "1"
+            },
+            {
+              "key": "from",
+              "value": "2026-05-01T00:00:00"
+            },
+            {
+              "key": "to",
+              "value": "2026-05-31T23:59:59"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Clock out",
+      "request": {
+        "auth": {
+          "type": "noauth"
+        },
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n  \"workerId\": 1\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://localhost:8080/api/attendance/clock-out",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8080",
+          "path": [
+            "api",
+            "attendance",
+            "clock-out"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Active Workers (Redis test)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8080/api/attendance/active",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8080",
+          "path": [
+            "api",
+            "attendance",
+            "active"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Overtime Summary",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8080/api/overtime/summary/1?month=2026-05",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8080",
+          "path": [
+            "api",
+            "overtime",
+            "summary",
+            "1"
+          ],
+          "query": [
+            {
+              "key": "month",
+              "value": "2026-05"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Overtime Settle-current month",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8080/api/overtime/settle/1?month=2026-05",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8080",
+          "path": [
+            "api",
+            "overtime",
+            "settle",
+            "1"
+          ],
+          "query": [
+            {
+              "key": "month",
+              "value": "2026-05"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Overtime Settle-past month",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8080/api/overtime/settle/1?month=2026-04",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8080",
+          "path": [
+            "api",
+            "overtime",
+            "settle",
+            "1"
+          ],
+          "query": [
+            {
+              "key": "month",
+              "value": "2026-04"
+            }
+          ]
+        }
+      },
+      "response": []
+    }
+  ]
+}
