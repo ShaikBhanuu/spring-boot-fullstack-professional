@@ -24,22 +24,23 @@ public class AttendanceController {
             @RequestBody Map<String, Long> request) {
         Long workerId = request.get("workerId");
         Long siteId = request.get("siteId");
-        return ResponseEntity.ok(
-                attendanceService.clockIn(workerId, siteId));
+        AttendanceLog log = attendanceService.clockIn(workerId, siteId);
+        attendanceService.addToCache(log); // Redis after transaction commits
+        return ResponseEntity.ok(log);
     }
 
     @PostMapping("clock-out")
     public ResponseEntity<AttendanceLog> clockOut(
             @RequestBody Map<String, Long> request) {
         Long workerId = request.get("workerId");
-        return ResponseEntity.ok(
-                attendanceService.clockOut(workerId));
+        AttendanceLog log = attendanceService.clockOut(workerId);
+        attendanceService.removeFromCache(workerId); // Redis after transaction commits
+        return ResponseEntity.ok(log);
     }
 
     @GetMapping("active")
     public ResponseEntity<List<Map<Object, Object>>> getActiveWorkers() {
-        return ResponseEntity.ok(
-                attendanceService.getActiveWorkers());
+        return ResponseEntity.ok(attendanceService.getActiveWorkers());
     }
 
     @GetMapping("log")

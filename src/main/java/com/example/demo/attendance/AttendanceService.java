@@ -19,7 +19,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
@@ -41,9 +40,9 @@ public class AttendanceService {
     private static final int MAX_SHIFT_HOURS = 16;
     private static final int MONTHLY_OT_CAP = 60;
 
+    // Only DB work inside @Transactional
     @Transactional
     public AttendanceLog clockIn(Long workerId, Long siteId) {
-        // Validate worker
         Worker worker = workerRepository.findById(workerId)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Worker not found with id: " + workerId));
@@ -53,7 +52,6 @@ public class AttendanceService {
                     "Worker is not active: " + worker.getName());
         }
 
-        // Validate site
         Site site = siteRepository.findById(siteId)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Site not found with id: " + siteId));
@@ -63,7 +61,6 @@ public class AttendanceService {
                     "Site is not active: " + site.getSiteName());
         }
 
-        // Check duplicate clock-in
         attendanceRepository.findActiveByWorkerId(workerId)
                 .ifPresent(a -> {
                     throw new ConflictException(
@@ -71,35 +68,36 @@ public class AttendanceService {
                                     + a.getSite().getSiteName());
                 });
 
-        // Check clock-in not in future
         LocalDateTime now = LocalDateTime.now();
-
-        // Save attendance
         AttendanceLog log = new AttendanceLog();
         log.setWorker(worker);
         log.setSite(site);
         log.setClockIn(now);
         log.setFlagged(false);
-        AttendanceLog saved = attendanceRepository.save(log);
-
-        // Add to Redis
-        Map<String, String> cacheEntry = new HashMap<>();
-        cacheEntry.put("workerId", workerId.toString());
-        cacheEntry.put("workerName", worker.getName());
-        cacheEntry.put("siteId", siteId.toString());
-        cacheEntry.put("siteName", site.getSiteName());
-        cacheEntry.put("clockIn", now.toString());
-
-        String redisKey = ACTIVE_WORKERS_KEY + ":" + workerId;
-        redisTemplate.opsForHash().putAll(redisKey, cacheEntry);
-        redisTemplate.expire(redisKey, MAX_SHIFT_HOURS, TimeUnit.HOURS);
-
-        return saved;
+        return attendanceRepository.save(log);
     }
 
+    // Redis write happens here — outside any transaction
+    public void addToCache(AttendanceLog log) {
+        try {
+            Map<String, String> cacheEntry = new HashMap<>();
+            cacheEntry.put("workerId", log.getWorker().getId().toString());
+            cacheEntry.put("workerName", log.getWorker().getName());
+            cacheEntry.put("siteId", log.getSite().getId().toString());
+            cacheEntry.put("siteName", log.getSite().getSiteName());
+            cacheEntry.put("clockIn", log.getClockIn().toString());
+
+            String redisKey = ACTIVE_WORKERS_KEY + ":" + log.getWorker().getId();
+            redisTemplate.opsForHash().putAll(redisKey, cacheEntry);
+            redisTemplate.expire(redisKey, MAX_SHIFT_HOURS, TimeUnit.HOURS);
+        } catch (Exception e) {
+            // Redis failure must not affect clock-in response
+        }
+    }
+
+    // Only DB work inside @Transactional
     @Transactional
     public AttendanceLog clockOut(Long workerId) {
-        // Find active attendance
         AttendanceLog log = attendanceRepository
                 .findActiveByWorkerId(workerId)
                 .orElseThrow(() -> new BadRequestException(
@@ -108,23 +106,19 @@ public class AttendanceService {
         LocalDateTime clockOut = LocalDateTime.now();
         log.setClockOut(clockOut);
 
-        // Calculate total hours
         long minutes = ChronoUnit.MINUTES.between(log.getClockIn(), clockOut);
         BigDecimal totalHours = BigDecimal.valueOf(minutes)
                 .divide(BigDecimal.valueOf(60), 2, RoundingMode.HALF_UP);
         log.setTotalHours(totalHours);
 
-        // Flag if shift exceeds 16 hours
         if (totalHours.compareTo(BigDecimal.valueOf(MAX_SHIFT_HOURS)) > 0) {
             log.setFlagged(true);
         }
 
-        // Calculate overtime
         if (totalHours.compareTo(BigDecimal.valueOf(STANDARD_HOURS)) > 0) {
             BigDecimal rawOvertimeHours = totalHours
                     .subtract(BigDecimal.valueOf(STANDARD_HOURS));
 
-            // Check monthly cap
             BigDecimal usedThisMonth = attendanceRepository
                     .sumOvertimeHoursForMonth(
                             workerId,
@@ -138,35 +132,35 @@ public class AttendanceService {
                 BigDecimal cappedOT = rawOvertimeHours.min(remaining);
                 log.setOvertimeHours(cappedOT);
 
-                // Calculate overtime amount
                 BigDecimal amount = calculateOvertimeAmount(
                         cappedOT, log.getWorker().getDailyWageRate());
 
-                // Save overtime entry
                 OvertimeEntry entry = new OvertimeEntry();
                 entry.setWorker(log.getWorker());
                 entry.setAttendance(log);
                 entry.setDate(clockOut.toLocalDate());
                 entry.setOvertimeHours(cappedOT);
-                entry.setOvertimeRateApplied(
-                        log.getWorker().getDailyWageRate());
+                entry.setOvertimeRateApplied(log.getWorker().getDailyWageRate());
                 entry.setAmount(amount);
                 entry.setSettlementStatus(SettlementStatus.PENDING);
                 overtimeRepository.save(entry);
             }
         }
 
-        AttendanceLog saved = attendanceRepository.save(log);
+        return attendanceRepository.save(log);
+    }
 
-        // Remove from Redis
-        String redisKey = ACTIVE_WORKERS_KEY + ":" + workerId;
-        redisTemplate.delete(redisKey);
-
-        return saved;
+    // Redis delete happens here — outside any transaction
+    public void removeFromCache(Long workerId) {
+        try {
+            String redisKey = ACTIVE_WORKERS_KEY + ":" + workerId;
+            redisTemplate.delete(redisKey);
+        } catch (Exception e) {
+            // Redis failure must not affect clock-out response
+        }
     }
 
     public java.util.List<Map<Object, Object>> getActiveWorkers() {
-        // Read exclusively from Redis
         java.util.Set<String> keys = redisTemplate.keys(
                 ACTIVE_WORKERS_KEY + ":*");
         java.util.List<Map<Object, Object>> activeWorkers =
@@ -196,8 +190,7 @@ public class AttendanceService {
                 .divide(BigDecimal.valueOf(STANDARD_HOURS),
                         2, RoundingMode.HALF_UP);
 
-        BigDecimal firstTwoHours = overtimeHours
-                .min(BigDecimal.valueOf(2));
+        BigDecimal firstTwoHours = overtimeHours.min(BigDecimal.valueOf(2));
         BigDecimal beyondTwoHours = overtimeHours
                 .subtract(firstTwoHours).max(BigDecimal.ZERO);
 
